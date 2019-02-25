@@ -1,0 +1,228 @@
+<html>
+    <head>
+        <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    </head>
+    <body onload="initfun()">
+        <div id="app">
+            <button v-on:click="addselector(null, true)">addfilter</button>
+            
+            <br />
+            <br />
+            <br />
+            
+            <div id="show" v-if="display">
+                <div v-for="item in showitem">
+                    <button v-on:click="selectfield(item.name, item.type, item.islist)">{{item.desc}}</button>
+                </div>
+            </div>
+            <div id="selectvalue" v-if="showdisplayval">
+                {{cselectedkey}} 
+                <select v-model="selectedop">
+                    <option v-for="opitem in oplist" v-bind:value="opitem.val">{{opitem.show}}</option>
+                </select>
+                <input v-model="inputval" type="text" /> <button v-on:click="submit">确认</button>
+            </div>
+            
+            
+            
+            <div>
+                <showtype v-bind:obj="mysets"></showtype>
+            </div>
+            
+            <br />
+            <br />
+            <br />
+            <br />
+            
+            <button v-on:click="createmfl">生成</button>
+            <div>{{createvalue}}</div>
+        </div>
+    </body>
+    <script type="text/javascript">
+        obj = {"Root":"OrderInfo","Mapper":{"OrderInfo":{"Name":"OrderInfo","PropertiesInfo":{"OrderTime":{"TypeName":"String","IsList":false,"Desc":"下单时间"},"TakeMealNum":{"TypeName":"String","IsList":false,"Desc":"份数"},"Scene":{"TypeName":"String","IsList":false,"Desc":"扫码时间"},"CustomerName":{"TypeName":"String","IsList":false,"Desc":"消费者ID"},"CustomerPhone":{"TypeName":"String","IsList":false,"Desc":"消费者手机号"},"EatingTime":{"TypeName":"String","IsList":false,"Desc":"就餐时间"},"CustomerCount":{"TypeName":"Int32","IsList":false,"Desc":"就餐人数"},"Remark":{"TypeName":"String","IsList":false,"Desc":"备注"},"DishSample":{"TypeName":"Dish","IsList":false,"Desc":"单菜品测试数据"},"Dishes":{"TypeName":"Dish","IsList":true,"Desc":"菜品数据列表"},"Dishes2":{"TypeName":"Dish","IsList":true,"Desc":"菜品数据列表2"}}},"Dish":{"Name":"Dish","PropertiesInfo":{"DishName":{"TypeName":"String","IsList":false,"Desc":"菜品名称"},"TakeCount":{"TypeName":"Double","IsList":false,"Desc":"份数"},"DishDescription":{"TypeName":"String","IsList":false,"Desc":"菜品描述"},"UnitPrice":{"TypeName":"Double","IsList":false,"Desc":"菜品单价"},"PracticeNames":{"TypeName":"String","IsList":true,"Desc":"单位名称"},"SubDishes":{"TypeName":"Dish","IsList":true,"Desc":"子菜品信息"},"PracticeList":{"TypeName":"DishPractice","IsList":true,"Desc":"菜品附加信息列表"}}},"DishPractice":{"Name":"DishPractice","PropertiesInfo":{"Id":{"TypeName":"Int32","IsList":false,"Desc":"ID信息"},"Name":{"TypeName":"String","IsList":false,"Desc":"Name信息"},"AddPrice":{"TypeName":"Int32","IsList":false,"Desc":"加价"}}}}}
+        myset = 
+        {
+            "name": "root",
+            "path": "root",
+            "rule": [],
+            "with":[]
+        }
+        Vue.component('showrule', {
+            data: function(){
+                return {
+                    
+                }
+            },
+            template:'<div>{{ruleitem.key}} {{ruleitem.op}} {{ruleitem.value}}<br /><span v-if="!islast"><select v-model="ruleitem.logic"><option>or</option><option>and</option></select></span></div>',
+            props: ['ruleitem', 'islast']
+        })
+        Vue.component('showtype', {
+            data: function(){
+                return {
+                    
+                }
+            },
+            computed: {
+                parentname: function(){
+                    var parbindobj = this.$parent.obj
+                    return parbindobj == null ? "" : parbindobj.name
+                },
+                propertyname: function(){
+                    return this.obj.path
+                }
+            },
+            template:'<div> {{propertyname}}({{obj.name}} =>  <showrule v-for="(ruleitem, key) in obj.rule" v-bind:ruleitem="ruleitem" v-bind:islast="key==obj.rule.length-1"></showrule><div style="margin-left: 20px"><showtype v-for="item in obj.with" v-bind:obj="item"></showtype></div></div>',
+            props: ['obj']
+        })
+        var initfun = function(){
+            var app = new Vue({
+                el: "#app",
+                data:{
+                    //规则列表
+                    //sets:[],
+                    //是否显示添加panel
+                    display: false,
+                    //当前级别的展示列表
+                    showitem:[],
+                    //选择的Key
+                    selectedkey:[],
+                    //显示输入值的panel
+                    showdisplayval:false,
+                    //操作符列表
+                    oplist:[],
+                    //选中的操作符的值
+                    selectedop:null,
+                    //输入值的
+                    inputval:null,
+                    //输入值的类型
+                    inputvaltype:'',
+                    createvalue: '',
+                    mysets: myset,
+                },
+                computed: {
+                    cselectedkey: function(){
+                        var result = this.selectedkey.map(function(x){
+                            return x.path
+                        }).join('|')
+                        return result
+                    }
+                },
+                methods: {
+                    addselector: function(elename, needroot){
+                        this.showitem = []
+                        this.display = true
+                        var root = elename == null ? obj['Root'] : elename
+                        if(needroot){
+                            if(this.selectedkey.length == 0)
+                                this.selectedkey.push({path:'root', type: root});
+                            else
+                                this.selectedkey.push({path: 'x' + this.selectedkey.length, type: root});
+                        }
+                        var element = obj.Mapper[root].PropertiesInfo
+                        for(var itemname in element){
+                            var item = element[itemname]
+                            this.showitem.push({name: itemname, type: item.TypeName, islist: item.IsList, desc:item.Desc == null?itemname:item.Desc})
+                        }
+                    },
+                    selectfield: function(name, type, islist){
+                        this.selectedkey[this.selectedkey.length - 1].path = this.selectedkey[this.selectedkey.length - 1].path + ("." + name)
+                        if(type == 'Int32' || type == 'String' || type == 'Double'){
+                            this.showvalue(type)
+                            return
+                        }
+                        this.addselector(type, islist)
+                    },
+                    showvalue: function(type){
+                        this.inputvaltype = type
+                        this.inputval = null
+                        this.display = false
+                        this.showdisplayval = true
+                        if(type == 'String'){
+                            this.oplist = [{val:'eq', show:'='}]
+                            this.selectedop = 'eq'
+                        }
+                        if(type == 'Int32' || type == 'Double'){
+                            this.oplist = [{val:'eq', show:'='}, {val:'gt', show:'>'}, {val:'ge', show:'>='}, {val:'ll', show:'<'}, {val:'le', show:'<='}]
+                            this.selectedop = 'eq'
+                        }
+                    },
+                    submit: function(){
+                        var val = this.inputval
+                        var node = this.selectedkey
+                        var valtype = this.inputvaltype
+                        if(valtype == 'Int32' || valtype == 'Double'){
+                            val = Number(val)
+                        }
+                        this.selectedkey = [];
+                        this.inputval = null
+                        this.inputvaltype = ''
+                        this.display = false
+                        this.showdisplayval = false
+                        //this.sets.push({key:node, op:this.selectedop, value:val})
+                        var root = this.mysets
+                        for(var nodeitem in node){
+                            var sourcepath = node[nodeitem].path
+                            var path = sourcepath.split('.')
+                            var rootname = path.shift();
+                            if(root.name != rootname){
+                                alert('error')
+                                return
+                            }
+                            if(nodeitem == (node.length - 1)){
+                                root.rule.push({key:sourcepath, op:this.selectedop, value:val, logic: 'and'})
+                                break
+                            }
+                            else{
+                                var newroot = null
+                                var targetpath = path.join('.');
+                                for(var withitem in root.with){
+                                    var withitemobj = root.with[withitem]
+                                    if(withitemobj.path == targetpath){
+                                        newroot = withitemobj;
+                                    }
+                                }
+                                if(newroot == null){
+                                    newroot = {name:('x'+(Number(nodeitem) + 1)), path:targetpath, rule:[], with:[]}
+                                    root.with.push(newroot)
+                                }
+                                root = newroot;
+                            }
+                        }
+                    },
+                    createmfl: function(){
+                        this.createvalue = this.createlogic(this.mysets)
+                    },
+                    createsubexp: function(filterexp, parent){
+                        var result = this.createlogic(filterexp)
+                        result = parent.name + '.' + filterexp.path + '('+filterexp.name+' => ' + result + ')'
+                        return result
+                    },
+                    createlogic: function(exp){
+                        /*
+                        var logicexpstr = exp.rule.map(function(x){
+                            return x.key+' ' + x.op+' ' + ((typeof x.value == 'number') ? x.value : ('"'+x.value+'"'))
+                        }).join(' and ')
+                        */
+                        var logicexpstr = ''
+                        for(var ruleindex in exp.rule){
+                            var ruleitem = exp.rule[ruleindex]
+                            var islast = ruleindex == (exp.rule.length - 1)
+                            var t = ruleitem.key+' ' + ruleitem.op+' ' + ((typeof ruleitem.value == 'number') ? ruleitem.value : ('"'+ruleitem.value+'"'))
+                            if(!islast){
+                                t += ' ' + ruleitem.logic + ' '
+                            }
+                            logicexpstr += t
+                        }
+                        var withlist = exp.with.map(function(x){
+                            return this.createsubexp(x, exp)
+                        }.bind(this))
+                        if(withlist.length != 0){
+                            logicexpstr += (' with ' + withlist.join(', '))
+                        }
+                        return logicexpstr
+                    }
+                }
+            })
+        }
+    </script>
+</html>
